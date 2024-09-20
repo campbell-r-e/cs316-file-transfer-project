@@ -14,17 +14,17 @@ public class ListReply extends FTMessage{
 
     @Override
     public void readFromChannel() throws IOException {
-        ByteBuffer filenameCountBuffer = ByteBuffer.allocate(4);
+        ByteBuffer filenameCountBuffer = ByteBuffer.allocate(1);
         channel.read(filenameCountBuffer);
         filenameCountBuffer.flip();
-        int filenameCount = filenameCountBuffer.getInt();
+        int filenameCount = filenameCountBuffer.get();
         filenames.ensureCapacity(filenameCount);
 
         for (int filenameIndex = 0; filenameIndex < filenameCount; filenameIndex++) {
-            ByteBuffer filenameLengthBuffer = ByteBuffer.allocate(4);
+            ByteBuffer filenameLengthBuffer = ByteBuffer.allocate(1);
             channel.read(filenameLengthBuffer);
             filenameLengthBuffer.flip();
-            int filenameLength = filenameLengthBuffer.getInt();
+            int filenameLength = filenameLengthBuffer.get();
 
             byte[] rawFilename = new byte[filenameLength];
             ByteBuffer filenameBuffer = ByteBuffer.wrap(rawFilename);
@@ -37,16 +37,16 @@ public class ListReply extends FTMessage{
 
     @Override
     public void writeToChannel() throws IOException {
-        ByteBuffer filenameCountBuffer = ByteBuffer.allocate(4);
-        filenameCountBuffer.putInt(filenames.size());
+        ByteBuffer filenameCountBuffer = ByteBuffer.allocate(1);
+        filenameCountBuffer.put((byte) filenames.size());
         filenameCountBuffer.flip();
         channel.write(filenameCountBuffer);
 
         for (String filename : filenames) {
             byte[] filenameBytes = filename.getBytes();
 
-            ByteBuffer filenameLengthBuffer = ByteBuffer.allocate(4);
-            filenameLengthBuffer.putInt(filenameBytes.length);
+            ByteBuffer filenameLengthBuffer = ByteBuffer.allocate(1);
+            filenameLengthBuffer.put((byte) filenameBytes.length);
             filenameLengthBuffer.flip();
             channel.write(filenameLengthBuffer);
 
