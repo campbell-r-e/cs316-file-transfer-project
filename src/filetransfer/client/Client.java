@@ -1,12 +1,10 @@
 package filetransfer.client;
 
-import filetransfer.shared.CommandID;
 import filetransfer.shared.message.ListReply;
 import filetransfer.shared.message.ListRequest;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -30,6 +28,7 @@ public class Client {
         System.out.println("Welcome! Please enter a command.");
 
         try (Scanner keyboardScanner = new Scanner(System.in)){
+            //noinspection InfiniteLoopStatement
             while (true) {
                 awaitCommand(keyboardScanner);
             }

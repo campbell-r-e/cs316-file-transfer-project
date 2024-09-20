@@ -1,17 +1,14 @@
 package filetransfer.server;
 
-import filetransfer.shared.CommandID;
 import filetransfer.shared.message.ListReply;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.ServerSocket;
 import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
-
-import static filetransfer.shared.CommandID.LIST;
+import java.util.Objects;
 
 public class Server {
     private static final InetSocketAddress address = new InetSocketAddress(3001);
@@ -40,21 +37,11 @@ public class Server {
         commandIDBuffer.get(commandID);
 
         switch (commandID[0]) {
-            case (byte) 0x00:
-                handleListRequest(channel);
-                break;
-            case (byte) 0x01:
-                handleDeleteRequest(channel);
-                break;
-            case (byte) 0x02:
-                handleRenameRequest(channel);
-                break;
-            case (byte) 0x03:
-                handleDownloadRequest(channel);
-                break;
-            case (byte) 0x04:
-                handleUploadRequest(channel);
-                break;
+            case (byte) 0x00 -> handleListRequest(channel);
+            case (byte) 0x01 -> handleDeleteRequest(channel);
+            case (byte) 0x02 -> handleRenameRequest(channel);
+            case (byte) 0x03 -> handleDownloadRequest(channel);
+            case (byte) 0x04 -> handleUploadRequest(channel);
         }
     }
 
@@ -63,7 +50,7 @@ public class Server {
 
         ListReply reply = new ListReply(channel);
 
-        for (File file: filesDirectory.listFiles()) {
+        for (File file: Objects.requireNonNull(filesDirectory.listFiles())) {
             reply.filenames.add(file.getName());
         }
 
