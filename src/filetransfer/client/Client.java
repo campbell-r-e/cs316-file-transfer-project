@@ -1,6 +1,13 @@
 package filetransfer.client;
 
+import filetransfer.shared.CommandID;
+import filetransfer.shared.message.ListReply;
+import filetransfer.shared.message.ListRequest;
+
+import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Scanner;
@@ -12,6 +19,7 @@ public class Client {
         put("rename", new Command(Client::rename, "rename <old_filename> <new_filename>"));
         put("download", new Command(Client::download, "download <filename>"));
         put("upload", new Command(Client::upload, "upload <filename>"));
+        put("quit", new Command(Client::quit, "quit"));
     }};
 
     private static InetSocketAddress serverAddress;
@@ -50,7 +58,26 @@ public class Client {
     }
 
     private static void list(String[] args) {
-        System.out.println(Arrays.toString(args));
+        try (SocketChannel channel = SocketChannel.open()) {
+            channel.connect(serverAddress);
+
+            System.out.println("Requesting list of files...");
+
+            ListRequest request = new ListRequest(channel);
+            request.writeToChannel();
+            channel.shutdownOutput();
+
+            ListReply reply = new ListReply(channel);
+            reply.readFromChannel();
+
+            System.out.println("Got filenames: ");
+            for (String filename: reply.filenames) {
+                System.out.println("\t" + filename);
+            }
+        }
+        catch (IOException exception) {
+            System.out.println("Failed to allocate channel.");
+        }
     }
 
     private static void delete(String[] args) {
@@ -67,5 +94,9 @@ public class Client {
 
     private static void upload(String[] args) {
         System.out.println(Arrays.toString(args));
+    }
+
+    private static void quit(String[] args) {
+        System.exit(0);
     }
 }

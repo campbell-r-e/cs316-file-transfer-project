@@ -1,16 +1,16 @@
 package filetransfer.shared;
 
 public enum CommandID {
-    LIST(0x00),
-    DELETE(0x01),
-    RENAME(0x02),
-    DOWNLOAD(0x03),
-    UPLOAD(0x04);
+    LIST((byte) 0x00),
+    DELETE((byte) 0x01),
+    RENAME((byte) 0x02),
+    DOWNLOAD((byte) 0x03),
+    UPLOAD((byte) 0x04);
 
 
-    public final int value;
+    public final byte value;
 
-    CommandID(int value) {
+    CommandID(byte value) {
         this.value = value;
     }
 }
