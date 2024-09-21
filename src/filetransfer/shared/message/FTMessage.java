@@ -10,6 +10,6 @@ public abstract class FTMessage {
         this.channel = channel;
     }
 
-    abstract void readFromChannel() throws IOException;
-    abstract void writeToChannel() throws IOException;
+    public abstract void readFromChannel() throws IOException;
+    public abstract void writeToChannel() throws IOException;
 }

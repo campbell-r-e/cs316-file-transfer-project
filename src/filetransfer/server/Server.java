@@ -2,6 +2,7 @@ package filetransfer.server;
 
 import filetransfer.shared.CommandID;
 import filetransfer.shared.ErrorCode;
+import filetransfer.shared.message.DeleteReply;
 import filetransfer.shared.message.DeleteRequest;
 import filetransfer.shared.message.ListReply;
 
@@ -73,11 +74,11 @@ public class Server {
         System.out.println("Client requested to delete file: " + request.filename);
 
         Path filepath = filesDirectory.toPath().resolve(Path.of(request.filename));
+        ErrorCode errorCode = attemptDelete(filepath);
 
-        ErrorCode errorCode;
-        if (!isPathInFilesDirectory(filepath)) {
-            System.out.println("Filename not in " + filesDirectory + ", denying permission.");
-        }
+        DeleteReply reply = new DeleteReply(channel);
+        reply.errorCode = errorCode;
+        reply.writeToChannel();
     }
 
     private static void handleRenameRequest(SocketChannel channel) throws IOException {
@@ -100,6 +101,7 @@ public class Server {
 
         try {
             Files.delete(filepath);
+            System.out.println("Successfully deleted");
             return ErrorCode.SUCCESS;
         }
         catch (NoSuchFileException exception) {

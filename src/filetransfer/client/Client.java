@@ -1,5 +1,6 @@
 package filetransfer.client;
 
+import filetransfer.shared.message.DeleteReply;
 import filetransfer.shared.message.DeleteRequest;
 import filetransfer.shared.message.ListReply;
 import filetransfer.shared.message.ListRequest;
@@ -95,13 +96,14 @@ public class Client {
             request.writeToChannel();
             channel.shutdownOutput();
 
-            //ListReply reply = new ListReply(channel);
-            //reply.readFromChannel();
+            DeleteReply reply = new DeleteReply(channel);
+            reply.readFromChannel();
 
-            //System.out.println("Got filenames: ");
-            //for (String filename: reply.filenames) {
-            //    System.out.println("\t" + filename);
-            //}
+            switch (reply.errorCode) {
+                case SUCCESS -> System.out.println("Successfully deleted " + args[0]);
+                case FILE_NOT_FOUND -> System.out.println("Could not delete " + args[0] + ", file not found");
+                case PERMISSION_DENIED -> System.out.println("Could not delete " + args[0] + ", permission denied");
+            }
         }
         catch (IOException exception) {
             System.out.println("Failed to allocate channel: " + exception.getMessage());
