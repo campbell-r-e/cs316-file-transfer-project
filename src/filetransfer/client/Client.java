@@ -1,5 +1,6 @@
 package filetransfer.client;
 
+import filetransfer.shared.message.DeleteRequest;
 import filetransfer.shared.message.ListReply;
 import filetransfer.shared.message.ListRequest;
 
@@ -75,12 +76,36 @@ public class Client {
             }
         }
         catch (IOException exception) {
-            System.out.println("Failed to allocate channel.");
+            System.out.println("Failed to allocate channel: " + exception.getMessage());
         }
     }
 
     private static void delete(String[] args) {
-        System.out.println(Arrays.toString(args));
+        if (args.length != 1) {
+            throw new IllegalArgumentException("You must provide the name of the file you wish to delete.");
+        }
+
+        try (SocketChannel channel = SocketChannel.open()) {
+            channel.connect(serverAddress);
+
+            System.out.println("Requesting to delete " + args[0]);
+
+            DeleteRequest request = new DeleteRequest(channel);
+            request.filename = args[0];
+            request.writeToChannel();
+            channel.shutdownOutput();
+
+            //ListReply reply = new ListReply(channel);
+            //reply.readFromChannel();
+
+            //System.out.println("Got filenames: ");
+            //for (String filename: reply.filenames) {
+            //    System.out.println("\t" + filename);
+            //}
+        }
+        catch (IOException exception) {
+            System.out.println("Failed to allocate channel: " + exception.getMessage());
+        }
     }
 
     private static void rename(String[] args) {

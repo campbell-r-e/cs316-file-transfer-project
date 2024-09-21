@@ -1,5 +1,6 @@
 package filetransfer.server;
 
+import filetransfer.shared.message.DeleteRequest;
 import filetransfer.shared.message.ListReply;
 
 import java.io.File;
@@ -61,6 +62,12 @@ public class Server {
 
     private static void handleDeleteRequest(SocketChannel channel) throws IOException {
         System.out.println("Received delete request");
+
+        DeleteRequest request = new DeleteRequest(channel);
+        request.readFromChannel();
+        System.out.println("Client requested to delete file: " + request.filename);
+
+
     }
 
     private static void handleRenameRequest(SocketChannel channel) throws IOException {
