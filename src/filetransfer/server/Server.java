@@ -1,5 +1,7 @@
 package filetransfer.server;
 
+import filetransfer.shared.CommandID;
+import filetransfer.shared.ErrorCode;
 import filetransfer.shared.message.DeleteRequest;
 import filetransfer.shared.message.ListReply;
 
@@ -9,6 +11,9 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.util.Objects;
 
 public class Server {
@@ -37,12 +42,12 @@ public class Server {
         commandIDBuffer.flip();
         commandIDBuffer.get(commandID);
 
-        switch (commandID[0]) {
-            case (byte) 0x00 -> handleListRequest(channel);
-            case (byte) 0x01 -> handleDeleteRequest(channel);
-            case (byte) 0x02 -> handleRenameRequest(channel);
-            case (byte) 0x03 -> handleDownloadRequest(channel);
-            case (byte) 0x04 -> handleUploadRequest(channel);
+        switch (CommandID.fromByte(commandID[0])) {
+            case LIST -> handleListRequest(channel);
+            case DELETE -> handleDeleteRequest(channel);
+            case RENAME -> handleRenameRequest(channel);
+            case DOWNLOAD -> handleDownloadRequest(channel);
+            case UPLOAD -> handleUploadRequest(channel);
         }
     }
 
@@ -67,7 +72,12 @@ public class Server {
         request.readFromChannel();
         System.out.println("Client requested to delete file: " + request.filename);
 
+        Path filepath = filesDirectory.toPath().resolve(Path.of(request.filename));
 
+        ErrorCode errorCode;
+        if (!isPathInFilesDirectory(filepath)) {
+            System.out.println("Filename not in " + filesDirectory + ", denying permission.");
+        }
     }
 
     private static void handleRenameRequest(SocketChannel channel) throws IOException {
@@ -80,5 +90,30 @@ public class Server {
 
     private static void handleUploadRequest(SocketChannel channel) throws IOException {
         System.out.println("Received upload request");
+    }
+
+    private static ErrorCode attemptDelete(Path filepath) {
+        if (!isPathInFilesDirectory(filepath)){
+            System.out.println("Failed to delete: File outside " + filesDirectory.getAbsolutePath());
+            return ErrorCode.PERMISSION_DENIED;
+        }
+
+        try {
+            Files.delete(filepath);
+            return ErrorCode.SUCCESS;
+        }
+        catch (NoSuchFileException exception) {
+            System.out.println("Failed to delete: File not found");
+            return ErrorCode.FILE_NOT_FOUND;
+        }
+        catch (IOException exception) {
+            System.out.println("Failed to delete: IO Error");
+            return ErrorCode.PERMISSION_DENIED;
+        }
+    }
+
+    private static boolean isPathInFilesDirectory(Path filepath) {
+        Path absolutePath = filesDirectory.toPath().resolve(filepath).toAbsolutePath().normalize();
+        return absolutePath.startsWith(filesDirectory.toPath().toAbsolutePath());
     }
 }
