@@ -1,9 +1,6 @@
 package filetransfer.client;
 
-import filetransfer.shared.message.DeleteReply;
-import filetransfer.shared.message.DeleteRequest;
-import filetransfer.shared.message.ListReply;
-import filetransfer.shared.message.ListRequest;
+import filetransfer.shared.message.*;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -111,7 +108,25 @@ public class Client {
     }
 
     private static void rename(String[] args) {
-        System.out.println(Arrays.toString(args));
+        if (args.length != 2) {
+            throw new IllegalArgumentException();
+        }
+
+        try (SocketChannel channel = SocketChannel.open()){
+            channel.connect(serverAddress);
+
+            System.out.println("Requesting to rename " + args[0] " to " + args[1]);
+
+            RenameRequest request = new RenameRequest(channel);
+            request.oldFilename = args[0];
+            request.newFilename = args[1];
+            request.writeToChannel();
+
+
+        }
+        catch (IOException exception) {
+            System.out.println("Failed to allocate channel: " + exception.getMessage());
+        }
     }
 
     private static void download(String[] args) {

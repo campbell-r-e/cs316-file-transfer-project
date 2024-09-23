@@ -5,6 +5,7 @@ import filetransfer.shared.ErrorCode;
 import filetransfer.shared.message.DeleteReply;
 import filetransfer.shared.message.DeleteRequest;
 import filetransfer.shared.message.ListReply;
+import filetransfer.shared.message.RenameRequest;
 
 import java.io.File;
 import java.io.IOException;
@@ -83,6 +84,15 @@ public class Server {
 
     private static void handleRenameRequest(SocketChannel channel) throws IOException {
         System.out.println("Received rename request");
+
+        RenameRequest request = new RenameRequest(channel);
+        request.readFromChannel();
+        System.out.println("Client requested to rename " + request.oldFilename + " -> " + request.newFilename);
+
+        Path oldFilepath = filesDirectory.toPath().resolve(Path.of(request.oldFilename));
+        Path newFilepath = filesDirectory.toPath().resolve(Path.of(request.newFilename));
+
+        ErrorCode[] errorCodes = attemptRename(oldFilepath, newFilepath);
     }
 
     private static void handleDownloadRequest(SocketChannel channel) throws IOException {
@@ -114,8 +124,13 @@ public class Server {
         }
     }
 
+    private static ErrorCode[] attemptRename(Path filepath) {
+
+    }
+
     private static boolean isPathInFilesDirectory(Path filepath) {
-        Path absolutePath = filesDirectory.toPath().resolve(filepath).toAbsolutePath().normalize();
+        Path absolutePath = filepath.toAbsolutePath().normalize();
+        System.out.println("Path: " + absolutePath);
         return absolutePath.startsWith(filesDirectory.toPath().toAbsolutePath());
     }
 }

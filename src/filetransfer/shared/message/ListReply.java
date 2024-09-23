@@ -28,6 +28,7 @@ public class ListReply extends FTMessage{
 
             byte[] rawFilename = new byte[filenameLength];
             ByteBuffer filenameBuffer = ByteBuffer.wrap(rawFilename);
+            // Consider using a while, read can read a *maximum* of the buffer size.
             channel.read(filenameBuffer);
             filenameBuffer.flip();
             String filename = new String(rawFilename);
