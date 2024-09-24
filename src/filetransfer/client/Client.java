@@ -93,7 +93,7 @@ public class Client {
             request.writeToChannel();
             channel.shutdownOutput();
 
-            DeleteReply reply = new DeleteReply(channel);
+            ErrorCodeReply reply = new ErrorCodeReply(channel);
             reply.readFromChannel();
 
             switch (reply.errorCode) {
@@ -115,14 +115,21 @@ public class Client {
         try (SocketChannel channel = SocketChannel.open()){
             channel.connect(serverAddress);
 
-            System.out.println("Requesting to rename " + args[0] " to " + args[1]);
+            System.out.println("Requesting to rename " + args[0] + " to " + args[1]);
 
             RenameRequest request = new RenameRequest(channel);
             request.oldFilename = args[0];
             request.newFilename = args[1];
             request.writeToChannel();
 
+            ErrorCodeReply reply = new ErrorCodeReply(channel);
+            reply.readFromChannel();
 
+            switch (reply.errorCode) {
+                case SUCCESS -> System.out.println("Successfully renamed " + args[0] + " to " + args[1]);
+                case FILE_NOT_FOUND -> System.out.println("Could not rename " + args[0] + " to " + args[1] + ", file not found");
+                case PERMISSION_DENIED -> System.out.println("Could not rename " + args[0] + " to " + args[1] + ", permission denied");
+            }
         }
         catch (IOException exception) {
             System.out.println("Failed to allocate channel: " + exception.getMessage());

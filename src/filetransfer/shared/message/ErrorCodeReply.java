@@ -6,10 +6,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
-public class DeleteReply extends FTMessage{
+public class ErrorCodeReply extends FTMessage{
     public ErrorCode errorCode;
 
-    public DeleteReply(SocketChannel channel) {
+    public ErrorCodeReply(SocketChannel channel) {
         super(channel);
     }
 

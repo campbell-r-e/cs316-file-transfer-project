@@ -2,7 +2,7 @@ package filetransfer.server;
 
 import filetransfer.shared.CommandID;
 import filetransfer.shared.ErrorCode;
-import filetransfer.shared.message.DeleteReply;
+import filetransfer.shared.message.ErrorCodeReply;
 import filetransfer.shared.message.DeleteRequest;
 import filetransfer.shared.message.ListReply;
 import filetransfer.shared.message.RenameRequest;
@@ -17,6 +17,8 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Objects;
+
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 public class Server {
     private static final InetSocketAddress address = new InetSocketAddress(3001);
@@ -77,7 +79,7 @@ public class Server {
         Path filepath = filesDirectory.toPath().resolve(Path.of(request.filename));
         ErrorCode errorCode = attemptDelete(filepath);
 
-        DeleteReply reply = new DeleteReply(channel);
+        ErrorCodeReply reply = new ErrorCodeReply(channel);
         reply.errorCode = errorCode;
         reply.writeToChannel();
     }
@@ -92,7 +94,10 @@ public class Server {
         Path oldFilepath = filesDirectory.toPath().resolve(Path.of(request.oldFilename));
         Path newFilepath = filesDirectory.toPath().resolve(Path.of(request.newFilename));
 
-        ErrorCode[] errorCodes = attemptRename(oldFilepath, newFilepath);
+        ErrorCode error = attemptRename(oldFilepath, newFilepath);
+        ErrorCodeReply reply = new ErrorCodeReply(channel);
+        reply.errorCode = error;
+        reply.writeToChannel();
     }
 
     private static void handleDownloadRequest(SocketChannel channel) throws IOException {
@@ -104,7 +109,7 @@ public class Server {
     }
 
     private static ErrorCode attemptDelete(Path filepath) {
-        if (!isPathInFilesDirectory(filepath)){
+        if (isPathOutsideFilesDirectory(filepath)){
             System.out.println("Failed to delete: File outside " + filesDirectory.getAbsolutePath());
             return ErrorCode.PERMISSION_DENIED;
         }
@@ -124,13 +129,30 @@ public class Server {
         }
     }
 
-    private static ErrorCode[] attemptRename(Path filepath) {
+    private static ErrorCode attemptRename(Path oldFilepath, Path newFilepath) {
+        if (isPathOutsideFilesDirectory(oldFilepath) || isPathOutsideFilesDirectory(newFilepath)) {
+            System.out.println("Failed to move file: File outside " + filesDirectory.getAbsolutePath());
+            return ErrorCode.PERMISSION_DENIED;
+        }
 
+        try {
+            Files.move(oldFilepath, newFilepath, REPLACE_EXISTING);
+            System.out.println("Moved " + oldFilepath + " to " + newFilepath);
+            return ErrorCode.SUCCESS;
+        }
+        catch (NoSuchFileException exception) {
+                System.out.println("Failed to move file: File not found");
+                return ErrorCode.FILE_NOT_FOUND;
+        }
+        catch (IOException exception) {
+                System.out.println("Failed to move file: IO Error");
+                return ErrorCode.PERMISSION_DENIED;
+        }
     }
 
-    private static boolean isPathInFilesDirectory(Path filepath) {
+    private static boolean isPathOutsideFilesDirectory(Path filepath) {
         Path absolutePath = filepath.toAbsolutePath().normalize();
         System.out.println("Path: " + absolutePath);
-        return absolutePath.startsWith(filesDirectory.toPath().toAbsolutePath());
+        return !absolutePath.startsWith(filesDirectory.toPath().toAbsolutePath());
     }
 }
