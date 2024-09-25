@@ -2,6 +2,9 @@ package filetransfer.client;
 
 import filetransfer.shared.message.*;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
@@ -18,6 +21,7 @@ public class Client {
         put("upload", new Command(Client::upload, "upload <filename>"));
         put("quit", new Command(Client::quit, "quit"));
     }};
+    private static final File clientFiles = new File("client_files");
 
     private static InetSocketAddress serverAddress;
 
@@ -121,6 +125,7 @@ public class Client {
             request.oldFilename = args[0];
             request.newFilename = args[1];
             request.writeToChannel();
+            channel.shutdownOutput();
 
             ErrorCodeReply reply = new ErrorCodeReply(channel);
             reply.readFromChannel();
@@ -141,7 +146,17 @@ public class Client {
     }
 
     private static void upload(String[] args) {
-        System.out.println(Arrays.toString(args));
+        if (args.length != 1) {
+            throw new IllegalArgumentException();
+        }
+
+        File filepath = new File(clientFiles, args[0]);
+        try (FileInputStream file = new FileInputStream(filepath)){
+
+        }
+        catch (FileNotFoundException exception) {
+            System.out.println("Could not find file " + args[0]);
+        }
     }
 
     private static void quit(String[] args) {
