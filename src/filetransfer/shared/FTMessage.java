@@ -1,4 +1,4 @@
-package filetransfer.shared.message;
+package filetransfer.shared;
 
 import java.io.IOException;
 import java.nio.channels.SocketChannel;

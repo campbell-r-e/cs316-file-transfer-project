@@ -1,12 +1,13 @@
 package filetransfer.shared.message;
 
 import filetransfer.shared.ErrorCode;
+import filetransfer.shared.FTMessage;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
-public class ErrorCodeReply extends FTMessage{
+public class ErrorCodeReply extends FTMessage {
     public ErrorCode errorCode;
 
     public ErrorCodeReply(SocketChannel channel) {

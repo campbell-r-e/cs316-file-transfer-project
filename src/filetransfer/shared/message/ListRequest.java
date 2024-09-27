@@ -1,6 +1,7 @@
 package filetransfer.shared.message;
 
 import filetransfer.shared.CommandID;
+import filetransfer.shared.FTMessage;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;

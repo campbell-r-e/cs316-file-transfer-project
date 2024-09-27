@@ -1,11 +1,13 @@
 package filetransfer.shared.message;
 
+import filetransfer.shared.FTMessage;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 
-public class ListReply extends FTMessage{
+public class ListReply extends FTMessage {
     public ArrayList<String> filenames = new ArrayList<>();
 
     public ListReply(SocketChannel channel) {
