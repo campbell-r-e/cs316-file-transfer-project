@@ -2,13 +2,9 @@ package filetransfer.server;
 
 import filetransfer.shared.CommandID;
 import filetransfer.shared.ErrorCode;
-import filetransfer.shared.message.ErrorCodeReply;
-import filetransfer.shared.message.DeleteRequest;
-import filetransfer.shared.message.ListReply;
-import filetransfer.shared.message.RenameRequest;
+import filetransfer.shared.message.*;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.ServerSocketChannel;
@@ -21,12 +17,14 @@ import java.util.Objects;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 public class Server {
-    private static final InetSocketAddress address = new InetSocketAddress(3001);
-    private static final File filesDirectory = new File("server_files");
+    private static final InetSocketAddress ADDRESS = new InetSocketAddress(3001);
+    private static final File FILES_DIRECTORY = new File("server_files");
+    private static final long MEBIBYTE = 1024 * 1024;
+    private static final long MAX_FILE_SIZE = 1024 * MEBIBYTE;
 
     public static void main(String[] args) {
         try (ServerSocketChannel serveChannel = ServerSocketChannel.open()) {
-            serveChannel.bind(address);
+            serveChannel.bind(ADDRESS);
 
             while (true){
                 try (SocketChannel channel = serveChannel.accept()){
@@ -60,7 +58,7 @@ public class Server {
 
         ListReply reply = new ListReply(channel);
 
-        for (File file: Objects.requireNonNull(filesDirectory.listFiles())) {
+        for (File file: Objects.requireNonNull(FILES_DIRECTORY.listFiles())) {
             reply.filenames.add(file.getName());
         }
 
@@ -76,7 +74,7 @@ public class Server {
         request.readFromChannel();
         System.out.println("Client requested to delete file: " + request.filename);
 
-        Path filepath = filesDirectory.toPath().resolve(Path.of(request.filename));
+        Path filepath = FILES_DIRECTORY.toPath().resolve(Path.of(request.filename));
         ErrorCode errorCode = attemptDelete(filepath);
 
         ErrorCodeReply reply = new ErrorCodeReply(channel);
@@ -91,8 +89,8 @@ public class Server {
         request.readFromChannel();
         System.out.println("Client requested to rename " + request.oldFilename + " -> " + request.newFilename);
 
-        Path oldFilepath = filesDirectory.toPath().resolve(Path.of(request.oldFilename));
-        Path newFilepath = filesDirectory.toPath().resolve(Path.of(request.newFilename));
+        Path oldFilepath = FILES_DIRECTORY.toPath().resolve(Path.of(request.oldFilename));
+        Path newFilepath = FILES_DIRECTORY.toPath().resolve(Path.of(request.newFilename));
 
         ErrorCode error = attemptRename(oldFilepath, newFilepath);
         ErrorCodeReply reply = new ErrorCodeReply(channel);
@@ -102,15 +100,88 @@ public class Server {
 
     private static void handleDownloadRequest(SocketChannel channel) throws IOException {
         System.out.println("Received download request");
+
+        DownloadRequest request = new DownloadRequest(channel);
+        request.readFromChannel();
+
+        System.out.println("Client requesting to download " + request.filename);
+
+        Path filepath = FILES_DIRECTORY.toPath().resolve(Path.of(request.filename));
+
+        if (isPathOutsideFilesDirectory(filepath)) {
+            System.out.println("Rejecting download request: requested file is outside server files");
+            ErrorCodeReply reply = new ErrorCodeReply(channel);
+            reply.errorCode = ErrorCode.PERMISSION_DENIED;
+            reply.writeToChannel();
+            return;
+        }
+
+        try (FileInputStream fileStream = new FileInputStream(filepath.toFile())) {
+            System.out.println("Approved client download request");
+            ErrorCodeReply reply = new ErrorCodeReply(channel);
+            reply.errorCode = ErrorCode.SUCCESS;
+            reply.writeToChannel();
+
+            FileMessage fileMessage = new FileMessage(channel);
+            fileMessage.writeFileToChannel(fileStream);
+
+            System.out.println("File uploaded to client");
+        }
+        catch (FileNotFoundException exception) {
+            System.out.println("Rejecting download request: file not found");
+            ErrorCodeReply reply = new ErrorCodeReply(channel);
+            reply.errorCode = ErrorCode.FILE_NOT_FOUND;
+            reply.writeToChannel();
+        }
     }
 
     private static void handleUploadRequest(SocketChannel channel) throws IOException {
         System.out.println("Received upload request");
+
+        UploadRequest request = new UploadRequest(channel);
+        request.readFromChannel();
+
+        System.out.println("Client requesting to upload " + request.filename + " with a size of " + request.fileSize + " bytes");
+
+        if (request.fileSize > MAX_FILE_SIZE) {
+            System.out.println("Rejecting upload request due to file size exceeding the maximum of " + MAX_FILE_SIZE + " bytes.");
+
+            ErrorCodeReply reply = new ErrorCodeReply(channel);
+            reply.errorCode = ErrorCode.FILE_TOO_LARGE;
+            reply.writeToChannel();
+            return;
+        }
+
+        System.out.println("Approved client upload request");
+        ErrorCodeReply reply = new ErrorCodeReply(channel);
+        reply.errorCode = ErrorCode.SUCCESS;
+        reply.writeToChannel();
+
+        // Will force the file to upload to the server files directory.
+        Path filepath = FILES_DIRECTORY.toPath().resolve(Path.of(request.filename).getFileName());
+
+        try (FileOutputStream fileStream = new FileOutputStream(filepath.toFile())) {
+            FileMessage fileMessage = new FileMessage(channel);
+            fileMessage.readFileFromChannel(fileStream);
+
+            System.out.println("Client upload complete");
+
+            ErrorCodeReply uploadReply = new ErrorCodeReply(channel);
+            uploadReply.errorCode = ErrorCode.SUCCESS;
+            uploadReply.writeToChannel();
+        }
+        catch (FileNotFoundException exception) {
+            System.out.println("Server error: Unable to write to " + filepath.toAbsolutePath());
+
+            ErrorCodeReply uploadReply = new ErrorCodeReply(channel);
+            uploadReply.errorCode = ErrorCode.FILE_NOT_FOUND;
+            uploadReply.writeToChannel();
+        }
     }
 
     private static ErrorCode attemptDelete(Path filepath) {
         if (isPathOutsideFilesDirectory(filepath)){
-            System.out.println("Failed to delete: File outside " + filesDirectory.getAbsolutePath());
+            System.out.println("Failed to delete: File outside " + FILES_DIRECTORY.getAbsolutePath());
             return ErrorCode.PERMISSION_DENIED;
         }
 
@@ -131,7 +202,7 @@ public class Server {
 
     private static ErrorCode attemptRename(Path oldFilepath, Path newFilepath) {
         if (isPathOutsideFilesDirectory(oldFilepath) || isPathOutsideFilesDirectory(newFilepath)) {
-            System.out.println("Failed to move file: File outside " + filesDirectory.getAbsolutePath());
+            System.out.println("Failed to move file: File outside " + FILES_DIRECTORY.getAbsolutePath());
             return ErrorCode.PERMISSION_DENIED;
         }
 
@@ -152,7 +223,6 @@ public class Server {
 
     private static boolean isPathOutsideFilesDirectory(Path filepath) {
         Path absolutePath = filepath.toAbsolutePath().normalize();
-        System.out.println("Path: " + absolutePath);
-        return !absolutePath.startsWith(filesDirectory.toPath().toAbsolutePath());
+        return !absolutePath.startsWith(FILES_DIRECTORY.toPath().toAbsolutePath());
     }
 }

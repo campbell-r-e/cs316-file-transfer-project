@@ -3,7 +3,8 @@ package filetransfer.shared;
 public enum ErrorCode {
     SUCCESS((byte) 0x00),
     FILE_NOT_FOUND((byte) 0x01),
-    PERMISSION_DENIED((byte) 0x02);
+    PERMISSION_DENIED((byte) 0x02),
+    FILE_TOO_LARGE((byte) 0x03);
 
     public final byte value;
 

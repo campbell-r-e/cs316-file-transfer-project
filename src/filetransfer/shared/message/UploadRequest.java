@@ -1,5 +1,7 @@
 package filetransfer.shared.message;
 
+import filetransfer.shared.CommandID;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
@@ -31,6 +33,11 @@ public class UploadRequest extends FTMessage{
 
     @Override
     public void writeToChannel() throws IOException {
+        ByteBuffer commandIDBuffer = ByteBuffer.allocate(Byte.BYTES);
+        commandIDBuffer.put(CommandID.UPLOAD.value);
+        commandIDBuffer.flip();
+        channel.write(commandIDBuffer);
+
         ByteBuffer filenameLengthBuffer = ByteBuffer.allocate(Byte.BYTES);
         filenameLengthBuffer.put((byte) filename.length());
         filenameLengthBuffer.flip();
@@ -42,6 +49,7 @@ public class UploadRequest extends FTMessage{
 
         ByteBuffer fileSizeBuffer = ByteBuffer.allocate(Long.BYTES);
         fileSizeBuffer.putLong(fileSize);
+        fileSizeBuffer.flip();
         channel.write(fileSizeBuffer);
     }
 }
