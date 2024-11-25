@@ -27,3 +27,9 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+### Test Files ###
+client_files/
+server_files/
+files/client_files/
+files/server_files/
