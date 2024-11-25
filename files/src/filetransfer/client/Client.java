@@ -19,7 +19,7 @@ public class Client {
         put("upload", new Command(Client::upload, "upload <filename>"));
         put("quit", new Command(Client::quit, "quit"));
     }};
-    private static final File CLIENT_FILES = new File("client_files");
+    private static final File CLIENT_FILES = new File("files/server_files");
 
     private static InetSocketAddress serverAddress;
 

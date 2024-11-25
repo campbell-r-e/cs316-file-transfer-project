@@ -20,7 +20,7 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 public class Server {
     private static final InetSocketAddress ADDRESS = new InetSocketAddress(3000);
-    private static final File FILES_DIRECTORY = new File("cs316-file-transfer-project/files/server_files");
+    private static final File FILES_DIRECTORY = new File("files/server_files");
     private static final long MEBIBYTE = 1024 * 1024;
     private static final long MAX_FILE_SIZE = 1024 * MEBIBYTE;
 
