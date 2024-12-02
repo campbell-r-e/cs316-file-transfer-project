@@ -15,23 +15,63 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 public class Server {
     private static final InetSocketAddress ADDRESS = new InetSocketAddress(3000);
     private static final File FILES_DIRECTORY = new File("files/server_files");
+    private static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(
+            Runtime.getRuntime().availableProcessors() - 2
+    );
     private static final long MEBIBYTE = 1024 * 1024;
     private static final long MAX_FILE_SIZE = 1024 * MEBIBYTE;
 
+    private static boolean acceptNewConnections = true;
+
+    private static final ReentrantLock activeJobsLock = new ReentrantLock();
+    private static int activeJobs = 0;
+    private static final Condition noActiveJobs = activeJobsLock.newCondition();
+
     public static void main(String[] args) {
+        Runtime.getRuntime().addShutdownHook(Thread.ofVirtual().unstarted(Server::shutdown));
+
         try (ServerSocketChannel serveChannel = ServerSocketChannel.open()) {
             serveChannel.bind(ADDRESS);
 
             while (true){
-                try (SocketChannel channel = serveChannel.accept()){
-                    handleRequests(channel);
+                SocketChannel channel = serveChannel.accept();
+
+                activeJobsLock.lock();
+                try {
+                    activeJobs++;
                 }
+                finally {
+                    activeJobsLock.unlock();
+                }
+
+                EXECUTOR.submit(() -> {
+                    try {
+                        handleRequests(channel);
+                        channel.close();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    activeJobsLock.lock();
+                    try {
+                        activeJobs--;
+                        if (activeJobs == 0) {
+                            noActiveJobs.signal();
+                        }
+                    }
+                    finally {
+                        activeJobsLock.unlock();
+                    }
+                });
             }
         }
         catch(IOException exception) {
@@ -39,7 +79,35 @@ public class Server {
         }
     }
 
+    private static void shutdown() {
+        System.out.println("Server shutting down!");
+        System.out.println("Blocking incoming connections.");
+        acceptNewConnections = false;
+        activeJobsLock.lock();
+        try {
+            System.out.println("Waiting on active jobs to finish...");
+            while (activeJobs > 0) {
+                noActiveJobs.await();
+            }
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        finally {
+            activeJobsLock.unlock();
+        }
+        EXECUTOR.shutdown();
+        System.out.println("Jobs finished.");
+    }
+
     private static void handleRequests(SocketChannel channel) throws IOException{
+        System.out.println("Handling");
+        if (!acceptNewConnections) {
+            ErrorCodeReply reply = new ErrorCodeReply(channel);
+            reply.errorCode = ErrorCode.SERVER_SHUTDOWN;
+            reply.writeToChannel();
+            return;
+        }
+
         ByteBuffer commandIDBuffer = ByteBuffer.allocate(1);
         channel.read(commandIDBuffer);
         byte[] commandID = new byte[1];
@@ -57,6 +125,10 @@ public class Server {
 
     private static void handleListRequest(SocketChannel channel) throws IOException {
         System.out.println("Received list request");
+
+        ErrorCodeReply errorReply = new ErrorCodeReply(channel);
+        errorReply.errorCode = ErrorCode.SUCCESS;
+        errorReply.writeToChannel();
 
         ListReply reply = new ListReply(channel);
 

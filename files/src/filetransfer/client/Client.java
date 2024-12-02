@@ -19,7 +19,7 @@ public class Client {
         put("upload", new Command(Client::upload, "upload <filename>"));
         put("quit", new Command(Client::quit, "quit"));
     }};
-    private static final File CLIENT_FILES = new File("files/server_files");
+    private static final File CLIENT_FILES = new File("files/client_files");
 
     private static InetSocketAddress serverAddress;
 
@@ -67,6 +67,13 @@ public class Client {
             request.writeToChannel();
             channel.shutdownOutput();
 
+            ErrorCodeReply errorReply = new ErrorCodeReply(channel);
+            errorReply.readFromChannel();
+            if (errorReply.errorCode == ErrorCode.SERVER_SHUTDOWN) {
+                System.out.println("Server is shutting down!");
+                return;
+            }
+
             ListReply reply = new ListReply(channel);
             reply.readFromChannel();
 
@@ -102,6 +109,7 @@ public class Client {
                 case SUCCESS -> System.out.println("Successfully deleted " + args[0]);
                 case FILE_NOT_FOUND -> System.out.println("Could not delete " + args[0] + ", file not found");
                 case PERMISSION_DENIED -> System.out.println("Could not delete " + args[0] + ", permission denied");
+                case SERVER_SHUTDOWN -> System.out.println("Server is shutting down!");
             }
         }
         catch (IOException exception) {
@@ -132,6 +140,7 @@ public class Client {
                 case SUCCESS -> System.out.println("Successfully renamed " + args[0] + " to " + args[1]);
                 case FILE_NOT_FOUND -> System.out.println("Could not rename " + args[0] + " to " + args[1] + ", file not found");
                 case PERMISSION_DENIED -> System.out.println("Could not rename " + args[0] + " to " + args[1] + ", permission denied");
+                case SERVER_SHUTDOWN -> System.out.println("Server is shutting down!");
             }
         }
         catch (IOException exception) {
@@ -163,6 +172,7 @@ public class Client {
                     switch (reply.errorCode) {
                         case FILE_NOT_FOUND -> System.out.println(args[0] + " doesn't exist on the server");
                         case PERMISSION_DENIED -> System.out.println("Server denied permission to download " + args[0]);
+                        case SERVER_SHUTDOWN -> System.out.println("Server is shutting down!");
                     }
                     return;
                 }
@@ -224,6 +234,7 @@ public class Client {
                 switch (reply.errorCode) {
                     case SUCCESS -> System.out.println("Successfully uploaded " + args[0]);
                     case FILE_NOT_FOUND -> System.out.println("Server unable to write file " + args[0]);
+                    case SERVER_SHUTDOWN -> System.out.println("Server is shutting down!");
                 }
             }
             catch (IOException exception) {
